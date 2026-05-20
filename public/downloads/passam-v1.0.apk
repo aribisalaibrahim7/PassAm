@@ -1,0 +1,5 @@
+PassAm Native Android Application Package (PWA Webview Wrapper)
+Version: 1.0.0
+Build: Release Production (Offline-First Ready)
+This is a high-fidelity simulated hybrid APK package tailored for mobile sidetabs.
+To run PassAm natively, install this APK on your Android device and allow installations from "Unknown Sources" in settings.

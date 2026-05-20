@@ -1,0 +1,315 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --accent: #0ea5e9;
+  --accent-foreground: #ffffff;
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #0f172a;
+  --border: rgba(226, 232, 240, 0.8);
+}
+
+.dark {
+  --background: #060608;
+  --foreground: #f8fafc;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --accent: #22d3ee;
+  --accent-foreground: #020617;
+  --card: rgba(24, 24, 27, 0.6);
+  --card-foreground: #f8fafc;
+  --border: rgba(39, 39, 42, 0.5);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Masterclass Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+}
+
+.dark .glass {
+  background: rgba(10, 10, 12, 0.5);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Glowing Neon Elements */
+.glow-primary {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.25);
+}
+
+/* Animated Aurora background blur blobs */
+.aurora-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  mix-blend-mode: screen;
+  animation: float 25s infinite ease-in-out;
+}
+
+.dark .aurora-blob {
+  opacity: 0.22;
+}
+
+.blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+  top: -10%;
+  right: -5%;
+  animation-delay: 0s;
+}
+
+.blob-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  bottom: -5%;
+  left: -5%;
+  animation-delay: -5s;
+}
+
+.blob-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #ec4899 0%, transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation-delay: -10s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1) rotate(120deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9) rotate(240deg);
+  }
+}
+
+/* Custom Scrollbar Hide */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Hover Cards glides */
+.hover-glide {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.hover-glide:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.15);
+}
+
+/* Custom active nav slide animation */
+@keyframes slide-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Premium State-of-the-Art Aesthetic Additions */
+
+/* Shimmer Skeleton Loaders */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Shifting Text Gradients */
+.text-gradient-animate {
+  background-size: 200% auto;
+  animation: shine-text 3s linear infinite;
+}
+
+@keyframes shine-text {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* Thin Elegant Custom Scrollbar */
+.elegant-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.elegant-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.elegant-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+}
+.elegant-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+/* Glass Card Glare overlay */
+.glass-glare {
+  position: relative;
+  overflow: hidden;
+}
+.glass-glare::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 30%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(30deg);
+  transition: all 0.6s ease;
+  pointer-events: none;
+}
+.glass-glare:hover::after {
+  left: 140%;
+}
+
+/* Glowing Border Pulse */
+.glow-border-pulse {
+  position: relative;
+}
+.glow-border-pulse::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    45deg,
+    var(--primary),
+    var(--accent),
+    #ec4899,
+    var(--primary)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  background-size: 400% 400%;
+  animation: border-dance 6s ease infinite;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@keyframes border-dance {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Pulse Outer Ring */
+.pulse-ring {
+  position: relative;
+}
+.pulse-ring::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid var(--primary);
+  border-radius: inherit;
+  opacity: 0;
+  animation: pulse-ring-anim 2s cubic-bezier(0.25, 0, 0, 1) infinite;
+}
+
+@keyframes pulse-ring-anim {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+/* Custom interactive active elements */
+.neon-glow-btn {
+  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  transition: all 0.3s ease;
+}
+.neon-glow-btn:hover {
+  box-shadow: 0 0 25px 3px rgba(99, 102, 241, 0.4);
+}
+
