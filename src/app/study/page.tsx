@@ -52,7 +52,7 @@ export default function StudyHub() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Sidebar
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -60,6 +60,20 @@ export default function StudyHub() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Handle sidebar responsive visibility on screen changes
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // File
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -331,10 +345,25 @@ export default function StudyHub() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100vh-4rem)] md:h-[calc(100vh-2rem)] overflow-hidden">
+    <div className="flex h-[calc(100dvh-8rem)] md:h-[calc(100dvh-2rem)] overflow-hidden w-full">
+
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-30 bg-background/60 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <aside className={`${sidebarOpen ? "w-64" : "w-0"} shrink-0 transition-all duration-300 overflow-hidden border-r border-border/50 flex flex-col bg-card/50 backdrop-blur-sm`}>
+      <aside 
+        className={`
+          ${sidebarOpen ? "w-64 border-r border-border/50" : "w-0 border-r-0"} 
+          fixed md:static inset-y-16 md:inset-y-0 left-0 z-35 
+          shrink-0 transition-all duration-300 overflow-hidden 
+          flex flex-col bg-card/95 md:bg-card/50 backdrop-blur-md md:backdrop-blur-sm
+        `}
+      >
         {/* Sidebar header */}
         <div className="p-4 border-b border-border/40 flex items-center justify-between shrink-0">
           <span className="font-black text-sm text-foreground flex items-center gap-1.5">
@@ -374,7 +403,7 @@ export default function StudyHub() {
                   onBlur={commitRename}
                   onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenamingId(null); }}
                   onClick={e => e.stopPropagation()}
-                  className="w-full bg-background border border-primary/40 rounded-lg px-2 py-0.5 text-xs font-bold focus:outline-none text-foreground"
+                  className="w-full bg-background border border-primary/40 rounded-lg px-2 py-0.5 text-base md:text-xs font-bold focus:outline-none text-foreground"
                 />
               ) : (
                 <>
@@ -428,9 +457,11 @@ export default function StudyHub() {
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg font-black truncate">{activeSession?.title || "Study Hub"}</h1>
+                <h1 className="text-sm md:text-lg font-black truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
+                  {activeSession?.title || "Study Hub"}
+                </h1>
                 {userProfile && (
-                  <span className="text-[9px] uppercase font-black bg-accent/20 text-accent border border-accent/30 px-2 py-0.5 rounded-full shrink-0">
+                  <span className="text-[9px] uppercase font-black bg-accent/20 text-accent border border-accent/30 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-block">
                     {userProfile.archetype}
                   </span>
                 )}
@@ -447,7 +478,7 @@ export default function StudyHub() {
               onClick={createNewChat}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-xl text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-sm shadow-primary/20"
             >
-              <Plus size={13} /> New Chat
+              <Plus size={13} /> <span className="hidden sm:inline">New Chat</span>
             </button>
             <div className="glass px-2.5 py-1.5 rounded-full text-xs font-semibold text-muted-foreground border border-border hidden md:flex items-center gap-1.5">
               <Sparkles size={11} className="text-primary animate-pulse" /> Rich Output
@@ -464,7 +495,7 @@ export default function StudyHub() {
                   <BrainCircuit size={12} />
                 </div>
               )}
-              <div className={`max-w-[88%] md:max-w-[72%] rounded-3xl px-5 py-4 ${
+              <div className={`max-w-[90%] md:max-w-[72%] rounded-3xl px-4 py-3 md:px-5 md:py-4 ${
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground rounded-br-sm shadow-lg shadow-primary/10 border border-primary/20"
                   : "glass rounded-bl-sm border border-border/60"
@@ -526,7 +557,7 @@ export default function StudyHub() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={isRecording ? "Listening…" : isTranscribing ? "Transcribing…" : "Ask your AI tutor…"}
-              className={`flex-1 bg-transparent border-none focus:outline-none resize-none max-h-32 min-h-[40px] py-2.5 text-sm scrollbar-hide ${isRecording ? "text-red-500 animate-pulse" : ""}`}
+              className={`flex-1 bg-transparent border-none focus:outline-none resize-none max-h-32 min-h-[40px] py-2.5 text-base md:text-sm scrollbar-hide ${isRecording ? "text-red-500 animate-pulse" : ""}`}
               rows={1}
               disabled={isStreaming || isRecording || isTranscribing}
             />
