@@ -45,9 +45,9 @@ export async function getAuthenticatedUser() {
         studyStreak: user.user_metadata?.study_streak ?? 5,
         lastStudyDate: user.user_metadata?.last_study_date || "",
         cardsMastered: user.user_metadata?.cards_mastered ?? 128,
-        recentSessions: user.user_metadata?.recent_sessions ?? [],
-        quizAttempts: user.user_metadata?.quiz_attempts ?? [],
-        upcomingEvents: user.user_metadata?.upcoming_events ?? [],
+        recentSessions: [], // Loaded client-side from dedicated tables
+        quizAttempts: [], // Loaded client-side from dedicated tables
+        upcomingEvents: [], // Loaded client-side from dedicated tables
         
         isDemo: false,
       };

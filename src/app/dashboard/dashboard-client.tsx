@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { BookOpen, Calendar, Target, TrendingUp, Clock, ArrowRight, GraduationCap, Sparkles, AlertCircle, BrainCircuit, CalendarPlus, Check, X, Download, Flame, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { calculateStreakUpdate } from "@/utils/streak";
+import { migrateLegacyMetadata } from "@/utils/supabase/migrator";
 
 interface DashboardClientProps {
   user: {
@@ -180,6 +181,65 @@ export function DashboardClient({ user }: DashboardClientProps) {
     checkDailyStreak();
   }, []);
 
+  // Fetch upcoming events & recent sessions on mount (with legacy metadata migration)
+  useEffect(() => {
+    async function loadDashboardData() {
+      if (user.isDemo) {
+        // Load from localStorage for demo users
+        try {
+          const arraysStr = localStorage.getItem("passam_demo_arrays");
+          if (arraysStr) {
+            const parsed = JSON.parse(arraysStr);
+            if (parsed.upcomingEvents) setUpcomingEvents(parsed.upcomingEvents);
+            if (parsed.recentSessions) setRecentSessions(parsed.recentSessions);
+          }
+        } catch (e) {
+          console.error("Failed to load demo arrays:", e);
+        }
+      } else {
+        try {
+          // 1. Run migration if user has legacy bloated metadata
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            await migrateLegacyMetadata(authUser, supabase);
+          }
+
+          // 2. Fetch events from dedicated table
+          const { data: dbEvents, error: eventsErr } = await supabase
+            .from("upcoming_events")
+            .select("*")
+            .order("time", { ascending: true });
+
+          if (dbEvents && !eventsErr) {
+            // Map table column names to client state formats if needed
+            setUpcomingEvents(
+              dbEvents.map((ev: any) => ({
+                id: ev.id,
+                title: ev.title,
+                type: ev.type,
+                time: ev.time,
+                duration: ev.duration,
+              }))
+            );
+          }
+
+          // 3. Fetch recent sessions from dedicated table
+          const { data: dbSessions, error: sessionsErr } = await supabase
+            .from("recent_sessions")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          if (dbSessions && !sessionsErr) {
+            setRecentSessions(dbSessions);
+          }
+        } catch (err) {
+          console.error("Failed to fetch dashboard user data from tables:", err);
+        }
+      }
+    }
+    loadDashboardData();
+  }, [user.isDemo, supabase]);
+
   // Quick Scheduler Handlers
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,17 +285,22 @@ export function DashboardClient({ user }: DashboardClientProps) {
         setUpcomingEvents(updatedEvents);
         setSuccessMsg("Event added to schedule!");
       } else {
-        // Save to real Supabase auth metadata
-        const supabase = createClient();
-        const { error } = await supabase.auth.updateUser({
-          data: {
-            upcoming_events: updatedEvents
-          }
+        // Save to real Supabase database table
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error("Not authenticated");
+
+        const { error } = await supabase.from("upcoming_events").insert({
+          id: newEvent.id,
+          user_id: authUser.id,
+          title: newEvent.title,
+          type: newEvent.type,
+          time: new Date(newEvent.time).toISOString(),
+          duration: newEvent.duration,
         });
 
         if (error) throw error;
         setUpcomingEvents(updatedEvents);
-        setSuccessMsg("Event synced with Supabase!");
+        setSuccessMsg("Event synced with Supabase database!");
       }
 
       // Reset form states

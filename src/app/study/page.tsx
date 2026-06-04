@@ -101,7 +101,29 @@ export default function StudyHub() {
     try {
       if (!isDemo) {
         const supabase = createClient();
-        await supabase.auth.updateUser({ data: { chat_sessions: trimmed } });
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          // Delete chats from database that were deleted in the UI
+          const activeIds = trimmed.map(s => s.id);
+          const { error: deleteErr } = await supabase
+            .from("chat_sessions")
+            .delete()
+            .eq("user_id", authUser.id)
+            .not("id", "in", `(${activeIds.join(",")})`);
+          if (deleteErr) console.error("Error pruning deleted chats:", deleteErr);
+
+          // Upsert current active chats
+          const rowsToUpsert = trimmed.map(s => ({
+            id: s.id,
+            user_id: authUser.id,
+            title: s.title,
+            messages: s.messages,
+          }));
+          const { error: upsertErr } = await supabase
+            .from("chat_sessions")
+            .upsert(rowsToUpsert, { onConflict: "id" });
+          if (upsertErr) throw upsertErr;
+        }
       } else {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
       }
@@ -122,7 +144,19 @@ export default function StudyHub() {
         let saved: ChatSession[] = [];
         if (user) {
           setIsDemo(false);
-          saved = user.user_metadata?.chat_sessions ?? [];
+          const { data: dbChats, error: dbErr } = await supabase
+            .from("chat_sessions")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (dbChats && !dbErr) {
+            saved = dbChats.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              messages: Array.isArray(c.messages) ? c.messages : [],
+              createdAt: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
+              updatedAt: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
+            }));
+          }
         } else {
           setIsDemo(true);
           const lsRaw = localStorage.getItem(STORAGE_KEY);

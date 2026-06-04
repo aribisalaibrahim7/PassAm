@@ -61,6 +61,17 @@ export default function Assessments() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
 
       if (authUser) {
+        // Fetch quiz attempts & recent sessions from dedicated Supabase tables
+        const { data: dbAttempts } = await supabase
+          .from("quiz_attempts")
+          .select("*")
+          .order("time", { ascending: false });
+
+        const { data: dbSessions } = await supabase
+          .from("recent_sessions")
+          .select("*")
+          .order("created_at", { ascending: false });
+
         setUser({
           name: authUser.user_metadata?.name || authUser.email?.split("@")[0] || "Student",
           email: authUser.email,
@@ -70,8 +81,8 @@ export default function Assessments() {
           studyStreak: authUser.user_metadata?.study_streak ?? 5,
           lastStudyDate: authUser.user_metadata?.last_study_date || "",
           cardsMastered: authUser.user_metadata?.cards_mastered ?? 128,
-          quizAttempts: authUser.user_metadata?.quiz_attempts ?? [],
-          recentSessions: authUser.user_metadata?.recent_sessions ?? [],
+          quizAttempts: dbAttempts || [],
+          recentSessions: dbSessions || [],
           isDemo: false,
         });
       } else {
@@ -85,6 +96,18 @@ export default function Assessments() {
         let cardsMastered = 128;
         let quizAttempts: any[] = [];
         let recentSessions: any[] = [];
+
+        // Load demo arrays from localStorage
+        const arraysStr = localStorage.getItem("passam_demo_arrays");
+        if (arraysStr) {
+          try {
+            const parsed = JSON.parse(arraysStr);
+            if (parsed.quizAttempts) quizAttempts = parsed.quizAttempts;
+            if (parsed.recentSessions) recentSessions = parsed.recentSessions;
+          } catch (e) {
+            // Ignored
+          }
+        }
 
         const profileCookie = document.cookie
           .split("; ")
@@ -100,8 +123,6 @@ export default function Assessments() {
             if (parsedProfile.studyStreak !== undefined) studyStreak = parsedProfile.studyStreak;
             if (parsedProfile.lastStudyDate !== undefined) lastStudyDate = parsedProfile.lastStudyDate;
             if (parsedProfile.cardsMastered !== undefined) cardsMastered = parsedProfile.cardsMastered;
-            if (parsedProfile.quizAttempts) quizAttempts = parsedProfile.quizAttempts;
-            if (parsedProfile.recentSessions) recentSessions = parsedProfile.recentSessions;
           } catch (e) {
             // Ignored
           }
@@ -199,17 +220,45 @@ export default function Assessments() {
         setSaveStatus("Activity graded and saved in Demo session!");
       } else {
         const supabase = createClient();
-        const { error } = await supabase.auth.updateUser({
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) throw new Error("Not authenticated");
+
+        // 1. Update slim profile fields in auth metadata
+        const { error: profileErr } = await supabase.auth.updateUser({
           data: {
             study_streak: newStreak,
             last_study_date: newDate,
             cards_mastered: newCardsMastered,
-            quiz_attempts: updatedAttempts,
-            recent_sessions: updatedSessions
           }
         });
+        if (profileErr) throw profileErr;
 
-        if (error) throw error;
+        // 2. Save new quiz attempt if present to table
+        if (newQuizAttempt) {
+          const { error: attemptErr } = await supabase.from("quiz_attempts").insert({
+            user_id: authUser.id,
+            course: newQuizAttempt.course || newQuizAttempt.title.split(":")[0] || "Quiz",
+            title: newQuizAttempt.title,
+            grade: newQuizAttempt.grade,
+            score: newQuizAttempt.score,
+            total: newQuizAttempt.total,
+          });
+          if (attemptErr) throw attemptErr;
+        }
+
+        // 3. Save new session to recent sessions table if present
+        if (newQuizAttempt && updatedSessions.length > 0) {
+          const latestSession = updatedSessions[0];
+          const { error: sessionErr } = await supabase.from("recent_sessions").insert({
+            id: latestSession.id,
+            user_id: authUser.id,
+            course: latestSession.course,
+            title: latestSession.title,
+            detail: latestSession.detail,
+            time: latestSession.time,
+          });
+          if (sessionErr) throw sessionErr;
+        }
 
         setUser((prev: any) => ({
           ...prev,
@@ -219,7 +268,7 @@ export default function Assessments() {
           quizAttempts: updatedAttempts,
           recentSessions: updatedSessions
         }));
-        setSaveStatus("Activity synchronized with Supabase cloud database!");
+        setSaveStatus("Activity synchronized with Supabase database tables!");
       }
       setTimeout(() => setSaveStatus(null), 3500);
     } catch (err) {
