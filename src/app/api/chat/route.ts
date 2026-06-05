@@ -14,30 +14,7 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    // Check if demo bypass session cookie is active
-    const cookieHeader = req.headers.get("cookie") || "";
-    const isDemo = cookieHeader.includes("passam_demo_session=true");
 
-    if (isDemo) {
-      const encoder = new TextEncoder();
-      const mockText =
-        "As your Demo AI Tutor, I'm here to help you review! Since you are in Demo Mode, this is a simulated response demonstrating our lightning-fast, offline-friendly interface. In live User Mode, this chat connects directly to our Llama 3.3 model on Groq. Feel free to ask about CSC 301, MTH 201, or any other engineering questions!";
-
-      const stream = new ReadableStream({
-        async start(controller) {
-          const words = mockText.split(" ");
-          for (let i = 0; i < words.length; i++) {
-            controller.enqueue(encoder.encode(words[i] + " "));
-            await new Promise((resolve) => setTimeout(resolve, 35));
-          }
-          controller.close();
-        },
-      });
-
-      return new Response(stream, {
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
-    }
 
     // Sanitize messages: flatten any parts-based messages into plain string content
     const formattedMessages = messages

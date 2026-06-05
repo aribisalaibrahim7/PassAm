@@ -9,37 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
     }
 
-    // Check if demo bypass session cookie is active
-    const cookieHeader = req.headers.get("cookie") || "";
-    const isDemo = cookieHeader.includes("passam_demo_session=true");
 
-    if (isDemo) {
-      const mockResults = [
-        {
-          id: "1",
-          url: `https://unilag.edu.ng/resources/${encodeURIComponent(query.toLowerCase().replace(/[^a-z0-9]/g, "_"))}`,
-          title: `Comprehensive Guide to ${query} in Nigerian Universities`,
-          text: `An academic lecture publication covering structural principles, derivations, and historical past exam frameworks of ${query} for undergraduate students.`,
-          author: "Prof. O. Balogun"
-        },
-        {
-          id: "2",
-          url: `https://youtube.com/watch?v=demo_video`,
-          title: `Step-by-step Tutorial on ${query}`,
-          text: `A highly visual 20-minute video seminar walking through mathematical matrices and exam calculations for ${query} using intuitive visual blocks.`,
-          author: "Sabi Academy"
-        },
-        {
-          id: "3",
-          url: `https://academia.edu/papers/study_notes.pdf`,
-          title: `Practical Calculus Application of ${query}`,
-          text: `A detailed reference syllabus guide outlining computational theorems and laboratory models built on ${query} for Nigerian engineering courses.`,
-          author: "Dr. Chidi Obi"
-        }
-      ];
-
-      return NextResponse.json({ results: mockResults });
-    }
 
     // Determine the base search string based on category
     let searchQuery = query;

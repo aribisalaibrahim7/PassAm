@@ -32,19 +32,19 @@ export async function getAuthenticatedUser() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       return {
-        email: user.email || "student@university.edu.ng",
+        email: user.email || "",
         name: user.user_metadata?.name || user.email?.split("@")[0] || "Student",
-        university: user.user_metadata?.university || "Nigerian University",
-        targetGpa: user.user_metadata?.target_gpa || "4.50",
-        currentGpa: user.user_metadata?.current_gpa || "4.20",
+        university: user.user_metadata?.university || "",
+        targetGpa: user.user_metadata?.target_gpa || "0.00",
+        currentGpa: user.user_metadata?.current_gpa || "0.00",
         gpaScale: user.user_metadata?.gpa_scale || "5.0",
         hasTakenSurvey: user.user_metadata?.has_taken_survey || false,
         surveyProfile: user.user_metadata?.survey_profile || null,
         
         // Live student tracker metrics
-        studyStreak: user.user_metadata?.study_streak ?? 5,
+        studyStreak: user.user_metadata?.study_streak ?? 0,
         lastStudyDate: user.user_metadata?.last_study_date || "",
-        cardsMastered: user.user_metadata?.cards_mastered ?? 128,
+        cardsMastered: user.user_metadata?.cards_mastered ?? 0,
         recentSessions: [], // Loaded client-side from dedicated tables
         quizAttempts: [], // Loaded client-side from dedicated tables
         upcomingEvents: [], // Loaded client-side from dedicated tables
@@ -59,88 +59,52 @@ export async function getAuthenticatedUser() {
   const cookieStore = await cookies();
   const isDemo = cookieStore.get("passam_demo_session")?.value === "true";
   if (isDemo) {
-    const surveyCookie = cookieStore.get("passam_demo_survey")?.value;
-    const hasTakenSurvey = !!surveyCookie;
-    let surveyProfile = null;
-    if (surveyCookie) {
-      try {
-        surveyProfile = JSON.parse(decodeURIComponent(surveyCookie));
-      } catch {
-        // Ignored
-      }
-    }
+    // Survey flag — full surveyProfile loads from localStorage client-side
+    const hasTakenSurvey = !!cookieStore.get("passam_demo_survey")?.value;
 
-    // Check if user has saved a custom demo profile in cookies
-    // Cookie is split into two to prevent HTTP 431 (header too large) errors:
-    //   passam_demo_profile  → scalar fields only (name, gpa, streak, etc.)
-    //   passam_demo_arrays   → capped arrays (recentSessions, quizAttempts, upcomingEvents)
+    // Profile cookie uses abbreviated keys to stay under 200 B:
+    //   n=name, u=university, tg=targetGpa, cg=currentGpa, gs=gpaScale
+    // Also supports legacy full-key format for backward compat.
     const profileCookie = cookieStore.get("passam_demo_profile")?.value;
-    const arraysCookie  = cookieStore.get("passam_demo_arrays")?.value;
 
-    let customName = "Adebayo Collins";
-    let customUni = "University of Lagos (UNILAG)";
-    let customGpa = "4.20";
-    let targetGpa = "4.50";
-    let gpaScale = "5.0";
-    let studyStreak = 5;
-    let lastStudyDate = "";
-    let cardsMastered = 128;
-    let recentSessions = [
-      { id: "1", course: "MTH", title: "MTH 201: Linear Algebra", detail: "Reviewed Vectors and Matrices", time: "2 hrs ago" },
-      { id: "2", course: "CSC", title: "CSC 301: Systems Programming", detail: "Transcribed CPU Schedules lecture", time: "Yesterday" },
-      { id: "3", course: "PHY", title: "PHY 202: Modern Physics", detail: "Practiced Quantum Mechanics flashcards", time: "3 days ago" }
-    ];
-    let quizAttempts: any[] = [];
-    let upcomingEvents = [
-      { id: "e1", title: "CSC 301 Midterm Prep", type: "Test", time: "2026-05-22T10:00", duration: 45 },
-      { id: "e2", title: "MTH 201 Final Revision", type: "Exam", time: "2026-05-25T14:00", duration: 120 }
-    ];
+    let customName  = "Demo Student";
+    let customUni   = "";
+    let customGpa   = "0.00";
+    let targetGpa   = "0.00";
+    let gpaScale    = "5.0";
 
     if (profileCookie) {
       try {
         const p = JSON.parse(decodeURIComponent(profileCookie));
-        if (p.name) customName = p.name;
-        if (p.university) customUni = p.university;
-        if (p.targetGpa) targetGpa = p.targetGpa;
-        if (p.currentGpa) customGpa = p.currentGpa;
-        if (p.gpaScale) gpaScale = p.gpaScale;
-        if (p.studyStreak !== undefined) studyStreak = p.studyStreak;
-        if (p.lastStudyDate !== undefined) lastStudyDate = p.lastStudyDate;
-        if (p.cardsMastered !== undefined) cardsMastered = p.cardsMastered;
+        // Abbreviated keys first, fall back to legacy full keys
+        if (p.n  || p.name)        customName = p.n  || p.name;
+        if (p.u  || p.university)  customUni  = p.u  || p.university;
+        if (p.tg || p.targetGpa)   targetGpa  = p.tg || p.targetGpa;
+        if (p.cg || p.currentGpa)  customGpa  = p.cg || p.currentGpa;
+        if (p.gs || p.gpaScale)    gpaScale   = p.gs || p.gpaScale;
       } catch {
-        // Ignored
+        // Ignored — defaults remain
       }
     }
 
-    if (arraysCookie) {
-      try {
-        const a = JSON.parse(decodeURIComponent(arraysCookie));
-        if (a.recentSessions?.length) recentSessions = a.recentSessions;
-        if (a.quizAttempts?.length)   quizAttempts   = a.quizAttempts;
-        if (a.upcomingEvents?.length)  upcomingEvents  = a.upcomingEvents;
-      } catch {
-        // Ignored
-      }
-    }
-
+    // Runtime metrics (studyStreak, cardsMastered, etc.) and arrays
+    // (recentSessions, quizAttempts, upcomingEvents) are loaded
+    // client-side from localStorage / Supabase tables — NOT from cookies.
     return {
-      email: "demo.student@unilag.edu.ng",
-      name: customName,
-      university: customUni,
-      targetGpa: targetGpa,
-      currentGpa: customGpa,
-      gpaScale: gpaScale,
+      email:          "demo.student@unilag.edu.ng",
+      name:           customName,
+      university:     customUni,
+      targetGpa,
+      currentGpa:     customGpa,
+      gpaScale,
       hasTakenSurvey,
-      surveyProfile,
-      
-      // Live student tracker metrics fallbacks
-      studyStreak,
-      lastStudyDate,
-      cardsMastered,
-      recentSessions,
-      quizAttempts,
-      upcomingEvents,
-      
+      surveyProfile:  null,   // Loaded client-side from localStorage
+      studyStreak:    0,
+      lastStudyDate:  "",
+      cardsMastered:  0,
+      recentSessions: [],
+      quizAttempts:   [],
+      upcomingEvents: [],
       isDemo: true,
     };
   }

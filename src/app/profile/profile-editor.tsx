@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { setPassamCookie, buildCookieProfile } from "@/utils/cookies";
 import { Bookmark, Sparkles, Check, Edit2, X } from "lucide-react";
 
 interface ProfileEditorProps {
@@ -84,15 +85,11 @@ export function ProfileEditor({
 
     try {
       if (isDemo) {
-        // Save to localStorage for demo persistence
+        // Save full profile (including runtime metrics) to localStorage
         const profileData = { name, university, targetGpa: finalTargetGpa, currentGpa: finalCurrentGpa, gpaScale };
         localStorage.setItem("passam_demo_profile", JSON.stringify(profileData));
-        
-        // Save to cookie for server-side component rendering sync (expires in 7 days)
-        const date = new Date();
-        date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const cookieVal = encodeURIComponent(JSON.stringify(profileData));
-        document.cookie = `passam_demo_profile=${cookieVal}; path=/; expires=${date.toUTCString()};`;
+        // Cookie stores identity only (abbreviated keys ≈ 150 B) — no runtime metrics
+        setPassamCookie("passam_demo_profile", JSON.stringify(buildCookieProfile(profileData)), 7);
 
         setMessage({ text: "Demo profile updated successfully!", type: "success" });
         

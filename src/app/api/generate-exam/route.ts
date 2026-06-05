@@ -41,41 +41,7 @@ export async function POST(req: Request) {
       questionCount = Math.min(Math.max(parseInt(count) || 20, 20), 60);
     }
 
-    // Check if demo bypass session cookie is active
-    const cookieHeader = req.headers.get("cookie") || "";
-    const isDemo = cookieHeader.includes("passam_demo_session=true");
 
-    if (isDemo) {
-      // Return a set of mock mixed questions matching the target parameters
-      const mockQuestions = Array.from({ length: questionCount }, (_, idx) => {
-        // Handle Exam 40% theory, 60% objective split, or format preferences
-        const isTheory = type === "Test" || (type === "Exam" && idx % 10 < 4); // 4 out of every 10 is 40% theory
-        
-        if (isTheory) {
-          return {
-            q: `[Q${idx + 1}] Explain the primary mechanism governing "${topic}" in active databases.`,
-            type: "theory" as const,
-            sampleAnswer: `The primary mechanism of "${topic}" relies on transaction serialization, low-latency queues, and query indexing optimizations.`,
-            explanation: `When analyzing "${topic}", students must prioritize core system protocols and memory allocation routines for high grades.`
-          };
-        } else {
-          return {
-            q: `[Q${idx + 1}] Which of the following is a primary constraint when implementing "${topic}"?`,
-            type: "objective" as const,
-            options: ["High latency overheads", "Pre-cached execution scripts", "Standard buffer limits", "Legacy software compilers"],
-            answer: 0,
-            explanation: `Execution constraints and computational speed bounds represent the principal bottleneck in ${topic}.`
-          };
-        }
-      });
-
-      return NextResponse.json({
-        exam: {
-          title: `Demo Mode: ${topic} ${type}`,
-          questions: mockQuestions
-        }
-      });
-    }
 
     // Determine specific prompt instructions based on the assessment type
     let promptInstructions = "";

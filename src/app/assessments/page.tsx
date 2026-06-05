@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { BrainCircuit, BookOpen, Clock, ChevronRight, CheckCircle2, Play, Sparkles, Loader2, ArrowRight, X, Award, RotateCcw, AlertTriangle, HelpCircle, History, BookOpenCheck, Flame, BookCopy, Calendar, ChevronLeft, Check } from "lucide-react";
 import { calculateStreakUpdate } from "@/utils/streak";
+import { setPassamCookie, buildCookieProfile, readCookieProfile } from "@/utils/cookies";
 
 export default function Assessments() {
   const [user, setUser] = useState<any>(null);
@@ -75,65 +76,58 @@ export default function Assessments() {
         setUser({
           name: authUser.user_metadata?.name || authUser.email?.split("@")[0] || "Student",
           email: authUser.email,
-          university: authUser.user_metadata?.university || "Nigerian University",
-          targetGpa: authUser.user_metadata?.target_gpa || "4.50",
-          currentGpa: authUser.user_metadata?.current_gpa || "4.20",
-          studyStreak: authUser.user_metadata?.study_streak ?? 5,
+          university: authUser.user_metadata?.university || "",
+          targetGpa: authUser.user_metadata?.target_gpa || "0.00",
+          currentGpa: authUser.user_metadata?.current_gpa || "0.00",
+          studyStreak: authUser.user_metadata?.study_streak ?? 0,
           lastStudyDate: authUser.user_metadata?.last_study_date || "",
-          cardsMastered: authUser.user_metadata?.cards_mastered ?? 128,
+          cardsMastered: authUser.user_metadata?.cards_mastered ?? 0,
           quizAttempts: dbAttempts || [],
           recentSessions: dbSessions || [],
           isDemo: false,
         });
       } else {
-        // Read demo cookie or localStorage
-        let customName = "Adebayo Collins";
-        let customUni = "University of Lagos (UNILAG)";
-        let customGpa = "4.20";
-        let targetGpa = "4.50";
-        let studyStreak = 5;
+        // Read identity from cookie (abbreviated keys handled by readCookieProfile)
+        const cp = readCookieProfile();
+        let customName = cp.name;
+        let customUni  = cp.university;
+        let customGpa  = cp.currentGpa;
+        let targetGpa  = cp.targetGpa;
+        let gpaScale   = cp.gpaScale;
+
+        // Read runtime metrics from localStorage (never stored in cookies)
+        let studyStreak = 0;
         let lastStudyDate = "";
-        let cardsMastered = 128;
+        let cardsMastered = 0;
         let quizAttempts: any[] = [];
         let recentSessions: any[] = [];
 
-        // Load demo arrays from localStorage
+        const lsProfile = localStorage.getItem("passam_demo_profile");
+        if (lsProfile) {
+          try {
+            const p = JSON.parse(lsProfile);
+            if (p.studyStreak   !== undefined) studyStreak   = p.studyStreak;
+            if (p.lastStudyDate !== undefined) lastStudyDate = p.lastStudyDate;
+            if (p.cardsMastered !== undefined) cardsMastered = p.cardsMastered;
+          } catch { /* ignored */ }
+        }
+
         const arraysStr = localStorage.getItem("passam_demo_arrays");
         if (arraysStr) {
           try {
             const parsed = JSON.parse(arraysStr);
-            if (parsed.quizAttempts) quizAttempts = parsed.quizAttempts;
+            if (parsed.quizAttempts)  quizAttempts  = parsed.quizAttempts;
             if (parsed.recentSessions) recentSessions = parsed.recentSessions;
-          } catch (e) {
-            // Ignored
-          }
-        }
-
-        const profileCookie = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("passam_demo_profile="));
-
-        if (profileCookie) {
-          try {
-            const parsedProfile = JSON.parse(decodeURIComponent(profileCookie.split("=")[1]));
-            if (parsedProfile.name) customName = parsedProfile.name;
-            if (parsedProfile.university) customUni = parsedProfile.university;
-            if (parsedProfile.targetGpa) targetGpa = parsedProfile.targetGpa;
-            if (parsedProfile.currentGpa) customGpa = parsedProfile.currentGpa;
-            if (parsedProfile.studyStreak !== undefined) studyStreak = parsedProfile.studyStreak;
-            if (parsedProfile.lastStudyDate !== undefined) lastStudyDate = parsedProfile.lastStudyDate;
-            if (parsedProfile.cardsMastered !== undefined) cardsMastered = parsedProfile.cardsMastered;
-          } catch (e) {
-            // Ignored
-          }
+          } catch { /* ignored */ }
         }
 
         setUser({
           name: customName,
           email: "demo.student@unilag.edu.ng",
           university: customUni,
-          targetGpa: targetGpa,
+          targetGpa,
           currentGpa: customGpa,
+          gpaScale,
           studyStreak,
           lastStudyDate,
           cardsMastered,
@@ -194,20 +188,21 @@ export default function Assessments() {
         };
         localStorage.setItem("passam_demo_arrays", JSON.stringify(updatedArrays));
 
-        // Cookie stores only scalar profile fields — must stay tiny
-        const slimProfile = {
-          name: user.name,
-          university: user.university,
-          targetGpa: user.targetGpa,
-          currentGpa: user.currentGpa,
+        // Runtime metrics go to localStorage only — never in cookies
+        const lsMetrics = {
           studyStreak: newStreak,
           lastStudyDate: newDate,
           cardsMastered: newCardsMastered,
         };
-        localStorage.setItem("passam_demo_profile", JSON.stringify(slimProfile));
-        const date = new Date();
-        date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-        document.cookie = `passam_demo_profile=${encodeURIComponent(JSON.stringify(slimProfile))}; path=/; expires=${date.toUTCString()};`;
+        localStorage.setItem("passam_demo_profile", JSON.stringify(lsMetrics));
+        // Cookie stores identity only (abbreviated keys, ~150 B)
+        setPassamCookie("passam_demo_profile", JSON.stringify(buildCookieProfile({
+          name:       user.name,
+          university: user.university,
+          targetGpa:  user.targetGpa,
+          currentGpa: user.currentGpa,
+          gpaScale:   user.gpaScale,
+        })), 7);
 
         setUser((prev: any) => ({
           ...prev,
