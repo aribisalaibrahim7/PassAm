@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Navigation } from "@/components/navigation";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "PassAm | AI Tutor for Nigeria",
@@ -49,6 +50,7 @@ export default function RootLayout({
         <ContentWrapper>
           {children}
         </ContentWrapper>
+        <Analytics />
       </body>
     </html>
   );
