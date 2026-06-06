@@ -6,6 +6,7 @@ import { BookOpen, Calendar, Target, TrendingUp, Clock, ArrowRight, GraduationCa
 import Link from "next/link";
 import { calculateStreakUpdate } from "@/utils/streak";
 import { migrateLegacyMetadata } from "@/utils/supabase/migrator";
+import { setPassamCookie, buildCookieProfile, readCookieProfile } from "@/utils/cookies";
 
 interface DashboardClientProps {
   user: {
@@ -158,10 +159,9 @@ export function DashboardClient({ user }: DashboardClientProps) {
               lastStudyDate: updatedDate,
             };
             localStorage.setItem("passam_demo_profile", JSON.stringify(slimProfile));
-            
-            const date = new Date();
-            date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-            document.cookie = `passam_demo_profile=${encodeURIComponent(JSON.stringify(slimProfile))}; path=/; expires=${date.toUTCString()};`;
+            // Write abbreviated cookie profile (identity fields only — keeps cookie under 200B)
+            const existing = readCookieProfile();
+            setPassamCookie("passam_demo_profile", JSON.stringify(buildCookieProfile(existing)), 7);
           } else {
             // Save to real Supabase
             const { error } = await supabase.auth.updateUser({
@@ -278,9 +278,15 @@ export function DashboardClient({ user }: DashboardClientProps) {
           studyStreak: existingProfile.studyStreak,
           cardsMastered: existingProfile.cardsMastered,
         };
-        const date = new Date();
-        date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-        document.cookie = `passam_demo_profile=${encodeURIComponent(JSON.stringify(slimProfile))}; path=/; expires=${date.toUTCString()};`;
+        // Write abbreviated cookie profile via size-guarded utility
+        const cpBase = readCookieProfile();
+        setPassamCookie("passam_demo_profile", JSON.stringify(buildCookieProfile({
+          name:       existingProfile.name       ?? cpBase.name,
+          university: existingProfile.university ?? cpBase.university,
+          targetGpa:  existingProfile.targetGpa  ?? cpBase.targetGpa,
+          currentGpa: existingProfile.currentGpa ?? cpBase.currentGpa,
+          gpaScale:   existingProfile.gpaScale   ?? cpBase.gpaScale,
+        })), 7);
 
         setUpcomingEvents(updatedEvents);
         setSuccessMsg("Event added to schedule!");
@@ -383,29 +389,48 @@ export function DashboardClient({ user }: DashboardClientProps) {
     }
   };
 
-  // Upgraded chats layout mock and real history
-  const recentChats = recentSessions.length > 0 ? recentSessions.map((session, idx) => ({
+  // Calculate weekly consistency dynamically based on live recentSessions
+  const getWeeklyConsistency = () => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const now = new Date();
+    
+    // Initialize last 7 days including today (ordered chronologically)
+    const last7Days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(now.getDate() - (6 - i));
+      return {
+        dateStr: d.toDateString(),
+        day: days[d.getDay()],
+        sessions: 0,
+        completed: false
+      };
+    });
+
+    recentSessions.forEach(session => {
+      if (!session.created_at) return;
+      const sDate = new Date(session.created_at);
+      const sDateStr = sDate.toDateString();
+      const match = last7Days.find(d => d.dateStr === sDateStr);
+      if (match) {
+        match.sessions += 1;
+        match.completed = true;
+      }
+    });
+
+    return last7Days;
+  };
+
+  const weeklyData = getWeeklyConsistency();
+
+  // Upgraded chats layout using real history
+  const recentChats = recentSessions.map((session, idx) => ({
     id: session.id || String(idx),
     title: session.title || "AI Tutor Session",
     detail: session.detail || "Active recall syllabus exploration",
     time: session.time || "Active now",
     topic: session.course || "General",
-  })) : [
-    { id: "1", title: "Logic & Proof Systems", detail: "Discussed Linear Algebra matrices and proofs.", time: "2 hrs ago", topic: "MTH 201" },
-    { id: "2", title: "CPU Scheduler Algorithms", detail: "Explored Round-Robin & Shortest Job First schedules.", time: "Yesterday", topic: "CSC 301" },
-    { id: "3", title: "Thermodynamics Core Concepts", detail: "Reviewed entropy calculations and energy equations.", time: "3 days ago", topic: "PHY 202" }
-  ];
+  }));
 
-  // Helper for generating custom weekly SVG streak heights based on study sessions count
-  const weeklyData = [
-    { day: "Mon", sessions: 2, completed: true },
-    { day: "Tue", sessions: 4, completed: true },
-    { day: "Wed", sessions: 1, completed: true },
-    { day: "Thu", sessions: 3, completed: true },
-    { day: "Fri", sessions: 5, completed: true },
-    { day: "Sat", sessions: 0, completed: false },
-    { day: "Sun", sessions: 2, completed: true },
-  ];
 
   return (
     <div className="p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
@@ -571,49 +596,54 @@ export function DashboardClient({ user }: DashboardClientProps) {
             </Link>
           </div>
 
-          {/* Premium UI for chats with active conversational features */}
           <div className="grid grid-cols-1 gap-4">
-            {recentChats.map((chat) => (
-              <div 
-                key={chat.id} 
-                className="glass p-5 rounded-3xl border border-border/60 hover:border-primary/30 bg-card/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover-glide relative overflow-hidden group"
-              >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] pointer-events-none group-hover:scale-110 transition-transform" />
-                
-                <div className="flex items-center gap-4 relative z-10">
-                  {/* Glowing user avatar bubble */}
-                  <div className="relative">
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 border border-primary/20 flex items-center justify-center text-primary font-black text-sm group-hover:scale-105 transition-transform shadow-inner">
-                      {chat.topic}
-                    </div>
-                    {/* Live Online state indicator */}
-                    <span className="w-3 h-3 rounded-full bg-emerald-400 border-2 border-background absolute -bottom-0.5 -right-0.5 animate-pulse" />
-                  </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-sm text-foreground">{chat.title}</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 font-medium line-clamp-1 max-w-sm sm:max-w-md">
-                      {chat.detail}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/20">
-                  <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
-                    <Clock size={12} /> {chat.time}
-                  </div>
-                  
-                  <Link
-                    href="/study"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all flex items-center gap-1 group-hover:shadow-md group-hover:shadow-primary/10 cursor-pointer"
-                  >
-                    <MessageSquare size={11} /> Resume
-                  </Link>
-                </div>
+            {recentChats.length === 0 ? (
+              <div className="text-center py-8 text-xs text-muted-foreground font-medium glass border border-border/40 rounded-3xl p-6">
+                No recent study sessions found. Open Study Hub to start your first session!
               </div>
-            ))}
+            ) : (
+              recentChats.map((chat) => (
+                <div 
+                  key={chat.id} 
+                  className="glass p-5 rounded-3xl border border-border/60 hover:border-primary/30 bg-card/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover-glide relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] pointer-events-none group-hover:scale-110 transition-transform" />
+                  
+                  <div className="flex items-center gap-4 relative z-10">
+                    {/* Glowing user avatar bubble */}
+                    <div className="relative">
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 border border-primary/20 flex items-center justify-center text-primary font-black text-sm group-hover:scale-105 transition-transform shadow-inner">
+                        {chat.topic}
+                      </div>
+                      {/* Live Online state indicator */}
+                      <span className="w-3 h-3 rounded-full bg-emerald-400 border-2 border-background absolute -bottom-0.5 -right-0.5 animate-pulse" />
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-extrabold text-sm text-foreground">{chat.title}</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 font-medium line-clamp-1 max-w-sm sm:max-w-md">
+                        {chat.detail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/20">
+                    <div className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                      <Clock size={12} /> {chat.time}
+                    </div>
+                    
+                    <Link
+                      href="/study"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all flex items-center gap-1 group-hover:shadow-md group-hover:shadow-primary/10 cursor-pointer"
+                    >
+                      <MessageSquare size={11} /> Resume
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Interactive Google Calendar & timetable scheduler panel */}

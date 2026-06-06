@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Key, Mail, Sparkles, LogIn, UserPlus, Info, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { setPassamCookie } from "@/utils/cookies";
 
 const NIGERIAN_UNIVERSITIES = [
   "University of Lagos (UNILAG)",
@@ -47,10 +48,8 @@ export default function Login() {
 
   const handleDemoLogin = () => {
     setLoading(true);
-    // Write demo cookie (expires in 7 days)
-    const date = new Date();
-    date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-    document.cookie = `passam_demo_session=true; path=/; expires=${date.toUTCString()};`;
+    // Write demo session cookie via size-guarded utility (expires in 7 days)
+    setPassamCookie("passam_demo_session", "true", 7);
     
     setMessage({
       text: "Launching Demo Student Portal...",

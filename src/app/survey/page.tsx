@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { setPassamCookie } from "@/utils/cookies";
 import { Sparkles, ArrowRight, BrainCircuit, Check, CheckCircle2, ChevronRight, HelpCircle, Loader2 } from "lucide-react";
 
 interface Question {
@@ -169,11 +170,8 @@ export default function SurveyPage() {
           survey_profile: profile,
         }));
         
-        // Also write demo survey cookie for Server-side components lookup
-        const date = new Date();
-        date.setTime(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const encodedProfile = encodeURIComponent(JSON.stringify(profile));
-        document.cookie = `passam_demo_survey=${encodedProfile}; path=/; expires=${date.toUTCString()};`;
+        // Cookie stores only a 1-byte flag — full survey profile stays in localStorage
+        setPassamCookie("passam_demo_survey", "1", 7);
       } else {
         // Save Supabase Auth metadata
         const { error } = await supabase.auth.updateUser({

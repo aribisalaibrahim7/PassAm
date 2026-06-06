@@ -1,8 +1,14 @@
+-- Drop existing tables to recreate them cleanly
+drop table if exists public.chat_sessions cascade;
+drop table if exists public.upcoming_events cascade;
+drop table if exists public.recent_sessions cascade;
+drop table if exists public.quiz_attempts cascade;
+
 -- SQL script to run in Supabase SQL Editor to create dedicated database tables.
 -- Enables Row Level Security (RLS) so users can only access their own data.
 
 -- 1. Table for Quiz Attempts
-create table if null not exists public.quiz_attempts (
+create table public.quiz_attempts (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     course text not null,
@@ -26,7 +32,7 @@ create index if not exists idx_quiz_attempts_user_id on public.quiz_attempts(use
 
 
 -- 2. Table for Recent Sessions
-create table if null not exists public.recent_sessions (
+create table public.recent_sessions (
     id text primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     course text not null,
@@ -48,7 +54,7 @@ create index if not exists idx_recent_sessions_user_id on public.recent_sessions
 
 
 -- 3. Table for Upcoming Events
-create table if null not exists public.upcoming_events (
+create table public.upcoming_events (
     id text primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     title text not null,
@@ -70,7 +76,7 @@ create index if not exists idx_upcoming_events_user_id on public.upcoming_events
 
 
 -- 4. Table for Chat Sessions
-create table if null not exists public.chat_sessions (
+create table public.chat_sessions (
     id text primary key,
     user_id uuid references auth.users(id) on delete cascade not null,
     title text not null,

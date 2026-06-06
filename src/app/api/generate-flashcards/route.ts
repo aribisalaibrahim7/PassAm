@@ -28,18 +28,7 @@ export async function POST(req: Request) {
 
     const cardCount = Math.min(Math.max(parseInt(count) || 5, 5), 20);
 
-    // Check if demo bypass session cookie is active
-    const cookieHeader = req.headers.get("cookie") || "";
-    const isDemo = cookieHeader.includes("passam_demo_session=true");
 
-    if (isDemo) {
-      const mockCards = Array.from({ length: cardCount }, (_, idx) => ({
-        front: `[Card ${idx + 1}] What is a key dimension of "${topic}"?`,
-        back: `This represents element ${idx + 1} of your active study syllabus. Memorize the fundamental structures, system algorithms, and performance matrices governing ${topic} to maximize exam performance.`
-      }));
-
-      return NextResponse.json({ flashcards: mockCards });
-    }
 
     // Call Gemini 2.5 Flash with detailed system directives to create high quality cards
     const { object } = await generateObject({

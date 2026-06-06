@@ -12,8 +12,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - session-reset (must always load clean — no cookies sent — to break the 494 loop)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|session-reset|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
